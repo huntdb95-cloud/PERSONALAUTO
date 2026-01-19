@@ -13,6 +13,10 @@ const FILE_HANDLE_KEY = "quote_intake_file_handle_v2";
 const custNameEl = document.getElementById("custName");
 const custPhoneEl = document.getElementById("custPhone");
 const custEmailEl = document.getElementById("custEmail");
+const custStreetEl = document.getElementById("custStreet");
+const custCityEl = document.getElementById("custCity");
+const custStateEl = document.getElementById("custState");
+const custZipEl = document.getElementById("custZip");
 
 // Auto tab fields
 const driverCountEl = document.getElementById("driverCount");
@@ -21,11 +25,12 @@ const driversEl = document.getElementById("drivers");
 const vehiclesEl = document.getElementById("vehicles");
 
 // Tab containers
-const tabAutoEl = document.getElementById("tabAuto");
-const tabHomeEl = document.getElementById("tabHome");
-const tabBusinessEl = document.getElementById("tabBusiness");
+const panelAutoEl = document.getElementById("panel-auto");
+const panelHomeEl = document.getElementById("panel-home");
+const panelBusinessEl = document.getElementById("panel-business");
 const homeContentEl = document.getElementById("homeContent");
 const businessContentEl = document.getElementById("businessContent");
+const tabsContainerEl = document.getElementById("tabsContainer");
 
 // JSON and status
 const jsonBoxEl = document.getElementById("jsonBox");
@@ -41,8 +46,7 @@ const btnImport = document.getElementById("btnImport");
 
 const toastEl = document.getElementById("toast");
 
-// Tab buttons
-const tabButtons = document.querySelectorAll(".tab");
+// Tab buttons will be queried dynamically via event delegation
 
 const US_STATES = [
   "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA",
@@ -61,7 +65,13 @@ function getDefaultAppState() {
     customer: {
       name: "",
       phone: "",
-      email: ""
+      email: "",
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        zip: ""
+      }
     },
     auto: {
       driverCount: 1,
@@ -127,7 +137,8 @@ function getDefaultAppState() {
     meta: {
       version: 2,
       updatedAt: new Date().toISOString()
-    }
+    },
+    lastActiveTab: "auto"
   };
 }
 
@@ -158,8 +169,14 @@ async function copy(text) {
 }
 
 /* ---------- Tab Switching ---------- */
-function switchTab(tabName) {
+function setActiveTab(tabName) {
+  // Validate tab name
+  if (!["auto", "home", "business"].includes(tabName)) {
+    tabName = "auto";
+  }
+
   // Update tab buttons
+  const tabButtons = document.querySelectorAll(".tab[data-tab]");
   tabButtons.forEach(btn => {
     if (btn.dataset.tab === tabName) {
       btn.classList.add("active");
@@ -168,13 +185,23 @@ function switchTab(tabName) {
     }
   });
 
-  // Update panels
-  tabAutoEl.classList.toggle("active", tabName === "auto");
-  tabHomeEl.classList.toggle("active", tabName === "home");
-  tabBusinessEl.classList.toggle("active", tabName === "business");
+  // Hide all panels
+  const panels = document.querySelectorAll(".tab-panel");
+  panels.forEach(panel => {
+    panel.classList.add("hidden");
+  });
 
-  // Save current tab state before switching
+  // Show target panel
+  const targetPanel = document.getElementById(`panel-${tabName}`);
+  if (targetPanel) {
+    targetPanel.classList.remove("hidden");
+  }
+
+  // Save current UI state before switching
   getAppStateFromUI();
+  
+  // Store active tab in state
+  appState.lastActiveTab = tabName;
   saveToLocalStorage();
 
   // Render the new tab (data is already in appState)
@@ -191,24 +218,37 @@ function renderTab(tabName) {
   }
 }
 
-// Wire up tab buttons
-tabButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    switchTab(btn.dataset.tab);
-  });
-});
+/* ---------- Bind Tab Events (Event Delegation) ---------- */
+function bindTabEvents() {
+  // Use event delegation on stable parent - works even if tabs are re-rendered
+  if (tabsContainerEl) {
+    tabsContainerEl.addEventListener("click", (e) => {
+      const tabButton = e.target.closest(".tab[data-tab]");
+      if (tabButton && tabButton.dataset.tab) {
+        e.preventDefault();
+        setActiveTab(tabButton.dataset.tab);
+      }
+    });
+  }
+}
 
 /* ---------- State Management: Get from UI ---------- */
 function getAppStateFromUI() {
   // Customer
   appState.customer = {
-    name: custNameEl.value || "",
-    phone: custPhoneEl.value || "",
-    email: custEmailEl.value || ""
+    name: custNameEl?.value || "",
+    phone: custPhoneEl?.value || "",
+    email: custEmailEl?.value || "",
+    address: {
+      street: custStreetEl?.value || "",
+      city: custCityEl?.value || "",
+      state: custStateEl?.value || "",
+      zip: custZipEl?.value || ""
+    }
   };
 
   // Auto tab (if visible)
-  if (tabAutoEl.classList.contains("active")) {
+  if (panelAutoEl && !panelAutoEl.classList.contains("hidden")) {
     appState.auto.driverCount = Number(driverCountEl.value || 0);
     appState.auto.vehicleCount = Number(vehicleCountEl.value || 0);
     appState.auto.drivers = snapshotDriversFromUI();
@@ -216,7 +256,7 @@ function getAppStateFromUI() {
   }
 
   // Home tab (if visible)
-  if (tabHomeEl.classList.contains("active")) {
+  if (panelHomeEl && !panelHomeEl.classList.contains("hidden")) {
     const homeInputs = homeContentEl.querySelectorAll("input, select, textarea");
     homeInputs.forEach(input => {
       const field = input.dataset.field;
@@ -227,7 +267,7 @@ function getAppStateFromUI() {
   }
 
   // Business tab (if visible)
-  if (tabBusinessEl.classList.contains("active")) {
+  if (panelBusinessEl && !panelBusinessEl.classList.contains("hidden")) {
     const businessInputs = businessContentEl.querySelectorAll("input, select, textarea");
     businessInputs.forEach(input => {
       const field = input.dataset.field;
@@ -258,9 +298,22 @@ function applyAppStateToUI(state) {
   state = migrateOldFormat(state);
 
   // Customer
-  custNameEl.value = state.customer?.name ?? "";
-  custPhoneEl.value = state.customer?.phone ?? "";
-  custEmailEl.value = state.customer?.email ?? "";
+  if (custNameEl) custNameEl.value = state.customer?.name ?? "";
+  if (custPhoneEl) custPhoneEl.value = state.customer?.phone ?? "";
+  if (custEmailEl) custEmailEl.value = state.customer?.email ?? "";
+  
+  // Customer address
+  const address = state.customer?.address || {};
+  if (custStreetEl) custStreetEl.value = address.street ?? "";
+  if (custCityEl) custCityEl.value = address.city ?? "";
+  if (custStateEl) {
+    custStateEl.value = address.state ?? "";
+    // Populate state dropdown if not already done
+    if (custStateEl.options.length <= 1) {
+      populateStateDropdown(custStateEl, address.state);
+    }
+  }
+  if (custZipEl) custZipEl.value = address.zip ?? "";
 
   // Auto
   if (state.auto) {
@@ -300,28 +353,57 @@ function applyAppStateToUI(state) {
     });
   }
 
-  // Render current tab
-  const activeTab = document.querySelector(".tab.active")?.dataset.tab || "auto";
-  renderTab(activeTab);
+  // Restore last active tab or default to auto
+  const activeTab = state.lastActiveTab || "auto";
+  setActiveTab(activeTab);
+}
+
+/* ---------- Populate State Dropdown ---------- */
+function populateStateDropdown(selectEl, selectedValue = "") {
+  if (!selectEl || selectEl.options.length > 1) return; // Already populated
+  selectEl.innerHTML = '<option value="">—</option>';
+  US_STATES.forEach(state => {
+    const option = document.createElement("option");
+    option.value = state;
+    option.textContent = state;
+    if (state === selectedValue) option.selected = true;
+    selectEl.appendChild(option);
+  });
 }
 
 /* ---------- Backwards Compatibility: Migrate Old Format ---------- */
 function migrateOldFormat(data) {
   // If it's old format (has counts/drivers/vehicles at root)
   if (data.counts || (data.drivers && !data.auto)) {
+    const defaultState = getDefaultAppState();
     return {
-      customer: data.customer || { name: "", phone: "", email: "" },
+      customer: {
+        ...defaultState.customer,
+        ...(data.customer || {})
+      },
       auto: {
         driverCount: data.counts?.drivers ?? data.drivers?.length ?? 1,
         vehicleCount: data.counts?.vehicles ?? data.vehicles?.length ?? 1,
         drivers: data.drivers || [],
         vehicles: data.vehicles || []
       },
-      home: getDefaultAppState().home,
-      business: getDefaultAppState().business,
-      meta: { version: 2, updatedAt: new Date().toISOString() }
+      home: defaultState.home,
+      business: defaultState.business,
+      meta: { version: 2, updatedAt: new Date().toISOString() },
+      lastActiveTab: data.lastActiveTab || "auto"
     };
   }
+  
+  // Ensure customer.address exists in migrated data
+  if (data.customer && !data.customer.address) {
+    data.customer.address = getDefaultAppState().customer.address;
+  }
+  
+  // Ensure lastActiveTab exists
+  if (!data.lastActiveTab) {
+    data.lastActiveTab = "auto";
+  }
+  
   return data;
 }
 
@@ -1085,8 +1167,14 @@ function wireAutosaveListeners() {
 }
 
 function init() {
+  // Populate state dropdown for customer address
+  populateStateDropdown(custStateEl);
+  
   populateSelect(driverCountEl, 10, 1);
   populateSelect(vehicleCountEl, 10, 1);
+
+  // Bind tab events using event delegation (once, stable)
+  bindTabEvents();
 
   // Auto count changes
   driverCountEl.addEventListener("change", (e) => {
@@ -1122,7 +1210,8 @@ function init() {
     importJSON(saved);
     toast("Restored last draft (local)");
   } else {
-    renderTab("auto");
+    // Default to auto tab
+    setActiveTab("auto");
     scheduleAutosave("Auto-saved locally");
   }
 

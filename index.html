@@ -99,10 +99,10 @@
       border-bottom-color: #0066cc;
     }
     .tab-panel {
-      display: none;
-    }
-    .tab-panel.active {
       display: block;
+    }
+    .tab-panel.hidden {
+      display: none;
     }
   </style>
 </head>
@@ -142,6 +142,27 @@
     </div>
 
     <div class="row" style="margin-top:12px">
+      <div class="field" style="flex: 2;">
+        <label>Street Address</label>
+        <input id="custStreet" autocomplete="street-address">
+      </div>
+      <div class="field">
+        <label>City</label>
+        <input id="custCity" autocomplete="address-level2">
+      </div>
+      <div class="field">
+        <label>State</label>
+        <select id="custState">
+          <option value="">—</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Zip Code</label>
+        <input id="custZip" autocomplete="postal-code" maxlength="10">
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:12px">
       <div class="field" style="min-width: 100%">
         <label>Import / Export JSON</label>
         <textarea id="jsonBox" placeholder="Export will appear here, or paste JSON here and click Import JSON"></textarea>
@@ -154,14 +175,14 @@
   </div>
 
   <!-- Tab Navigation -->
-  <div class="tabs">
+  <div class="tabs" id="tabsContainer">
     <button class="tab active" data-tab="auto">Auto</button>
     <button class="tab" data-tab="home">Home</button>
     <button class="tab" data-tab="business">Business</button>
   </div>
 
   <!-- Auto Tab -->
-  <div id="tabAuto" class="tab-panel active">
+  <div id="panel-auto" class="tab-panel">
     <div class="row" style="margin-bottom: 12px">
       <div class="field">
         <label># Drivers</label>
@@ -181,12 +202,12 @@
   </div>
 
   <!-- Home Tab -->
-  <div id="tabHome" class="tab-panel">
+  <div id="panel-home" class="tab-panel hidden">
     <div id="homeContent"></div>
   </div>
 
   <!-- Business Tab -->
-  <div id="tabBusiness" class="tab-panel">
+  <div id="panel-business" class="tab-panel hidden">
     <div id="businessContent"></div>
   </div>
 
