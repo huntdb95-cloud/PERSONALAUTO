@@ -1160,15 +1160,25 @@ function exportJSON() {
 }
 
 function importJSON(data) {
-  const migrated = migrateOldFormat(data);
-  // Merge into appState
-  Object.assign(appState, migrated);
-  // Ensure nested objects exist
-  if (!appState.home) appState.home = getDefaultAppState().home;
-  if (!appState.business) appState.business = getDefaultAppState().business;
-  if (!appState.business.workersComp) appState.business.workersComp = getDefaultAppState().business.workersComp;
-  if (!appState.business.generalLiability) appState.business.generalLiability = getDefaultAppState().business.generalLiability;
-  applyAppStateToUI(appState);
+  try {
+    if (!data || typeof data !== "object") {
+      console.warn("Invalid import data:", data);
+      toast("Invalid import data: must be an object");
+      return false;
+    }
+    
+    console.log("Importing JSON data:", data);
+    
+    // Use setAppStateAndRefresh which properly normalizes and applies state
+    setAppStateAndRefresh(data);
+    
+    console.log("Import successful, appState:", appState);
+    return true;
+  } catch (error) {
+    console.error("Import error:", error, error.stack);
+    toast("Error importing JSON: " + (error.message || "Unknown error"));
+    return false;
+  }
 }
 
 /* ---------- File Save/Open ---------- */
