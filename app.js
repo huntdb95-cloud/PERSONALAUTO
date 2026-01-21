@@ -583,13 +583,19 @@ function snapshotVehiclesFromUI() {
 
 /* ---------- Render Auto Tab ---------- */
 function renderAutoTab() {
-  const state = appState.auto;
-  
-  driverCountEl.value = String(state.driverCount);
-  vehicleCountEl.value = String(state.vehicleCount);
+  const state = appState.auto || {};
+  const driverCount = Number(state.counts?.drivers ?? state.driverCount ?? 0) || 0;
+  const vehicleCount = Number(state.counts?.vehicles ?? state.vehicleCount ?? 0) || 0;
 
-  renderDrivers(state.driverCount, state.drivers || []);
-  renderVehicles(state.vehicleCount, state.vehicles || []);
+  if (!state.counts) state.counts = { drivers: 0, vehicles: 0 };
+  state.counts.drivers = driverCount;
+  state.counts.vehicles = vehicleCount;
+
+  if (driverCountEl) driverCountEl.value = String(driverCount);
+  if (vehicleCountEl) vehicleCountEl.value = String(vehicleCount);
+
+  renderDrivers(driverCount, state.drivers || []);
+  renderVehicles(vehicleCount, state.vehicles || []);
 }
 
 function stateOptionsHtml(selected) {
